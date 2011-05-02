@@ -7,6 +7,13 @@
 -----------------------------------------
 -- SeatReservation.hs
 -----------------------------------------
+-- Aufruf: hugs seatReservation.hs
+--         Main> main
+-----------------------------------------
+-- Achtung, mögliche Fehlerquellen:
+--    o) Einrückungen beachten
+--    o) keine Tabulatoren im Code verwenden sondern nur Leerzeichen
+-----------------------------------------
 
 
 module Main (main)
@@ -44,6 +51,7 @@ type Database		 = ([Train], [Reservation])
 -- Main Program
 main :: IO ()
 main = do db <- loadDatabase kFileName
+          mainLoop db
           saveDatabase db kFileName
 
 -- Loads the database with path fileName and returns it
@@ -57,3 +65,16 @@ loadDatabase fileName = catch (do fileContent <- readFile fileName	-- try to rea
 -- Saves the database db into a file with name fileName
 saveDatabase :: Database -> String -> IO ()
 saveDatabase db fileName = writeFile fileName (show db)
+
+mainLoop :: Database -> IO ()
+mainLoop (trains, reservations) = do
+    command <- readCommand
+    case command of
+        0    -> putStrLn "Beenden..."
+        _    -> mainLoop (trains, reservations)
+	
+			
+readCommand :: IO Int
+readCommand = do putStr "Command: "
+                 line <- getLine
+                 return (read line :: Int)

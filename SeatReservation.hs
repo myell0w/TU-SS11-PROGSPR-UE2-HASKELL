@@ -54,6 +54,16 @@ main = do db <- loadDatabase kFileName
           mainLoop db
           saveDatabase db kFileName
 
+-- does all the work
+mainLoop :: Database -> IO ()
+mainLoop (trains, reservations) = do
+    command <- readCommand
+    case command of
+        0    -> putStrLn "Beenden..."
+        _    -> mainLoop (trains, reservations)
+
+
+
 -- Loads the database with path fileName and returns it
 -- if the file doesn't exists, return an empty database
 loadDatabase :: String -> IO Database
@@ -65,15 +75,9 @@ loadDatabase fileName = catch (do fileContent <- readFile fileName	-- try to rea
 -- Saves the database db into a file with name fileName
 saveDatabase :: Database -> String -> IO ()
 saveDatabase db fileName = writeFile fileName (show db)
-
-mainLoop :: Database -> IO ()
-mainLoop (trains, reservations) = do
-    command <- readCommand
-    case command of
-        0    -> putStrLn "Beenden..."
-        _    -> mainLoop (trains, reservations)
 	
-			
+
+-- reads the next command from stdin (Integer)
 readCommand :: IO Int
 readCommand = do putStr "Command: "
                  line <- getLine

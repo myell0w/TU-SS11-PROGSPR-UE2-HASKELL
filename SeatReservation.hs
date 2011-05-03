@@ -18,39 +18,41 @@
 
 module Main (main)
 where
-	
+
+
 -- Import of Libraries
 import Data.List
 import Data.Char
 import Numeric
 import Ix
 import Directory (doesFileExist)
-	
-	
+
+
 -- Constants
 kFileName = "seatReservation.txt"
-	
+
+
 -- Type Definitions
-type Station		 				  = Int
-type StartStation    				  = Station
-type EndStation		 				  = Station
-type WaggonNumber	 				  = Int
-type PersonCount					  = Int
-type WaggonCount					  = Int
-type SeatNumber		 				  = Int
-type SeatCountPerWaggon 			  = Int
+type Station                          = Int
+type StartStation                     = Station
+type EndStation                       = Station
+type WaggonNumber                     = Int
+type PersonCount                      = Int
+type WaggonCount                      = Int
+type SeatNumber                       = Int
+type SeatCountPerWaggon               = Int
 type FreeSeatsWithoutReservationCount = Int
-type TrainName		 				  = String
+type TrainName                        = String
 
 
 type Waggon          = (WaggonNumber, SeatCountPerWaggon)
-type Train			 = (TrainName, [Waggon], FreeSeatsWithoutReservationCount)
+type Train             = (TrainName, [Waggon], FreeSeatsWithoutReservationCount)
 
 data SeatReservation = SingleReservation SeatNumber |
-				   	   GroupReservation PersonCount deriving (Show, Read, Eq)
+                          GroupReservation PersonCount deriving (Show, Read, Eq)
 
-type Reservation 	 = (TrainName, WaggonNumber, StartStation, EndStation, SeatReservation)
-type Database		 = ([Train], [Reservation])
+type Reservation      = (TrainName, WaggonNumber, StartStation, EndStation, SeatReservation)
+type Database         = ([Train], [Reservation])
 
 
 -- Main Program
@@ -61,26 +63,27 @@ main = do db <- loadDatabase kFileName
 
 -- does all the work
 mainLoop :: Database -> IO ()
-mainLoop (trains, reservations) = do
+mainLoop db@(trains, reservations) = do
     command <- readCommand
     case command of
         0    -> putStrLn "Beenden..." 
-        _    -> mainLoop (trains, reservations)
+        1    -> callMinFreeSeats db
+        _    -> mainLoop db
 
 
 
 -- Loads the database with path fileName and returns it
 -- if the file doesn't exists, return an empty database
 loadDatabase :: String -> IO Database
-loadDatabase fileName = catch (do fileContent <- readFile fileName	-- try to read db
-                                  return (read fileContent))		-- cast db to Database
-                              (\e -> return ([],[]))				-- on error return empty db (e.g. file doesn't exist)
+loadDatabase fileName = catch (do fileContent <- readFile fileName    -- try to read db
+                                  return (read fileContent))        -- cast db to Database
+                              (\e -> return ([],[]))                -- on error return empty db (e.g. file doesn't exist)
 
 
 -- Saves the database db into a file with name fileName
 saveDatabase :: Database -> String -> IO ()
 saveDatabase db fileName = writeFile fileName (show db)
-	
+    
 
 -- reads the next command from stdin (Integer)
 readCommand :: IO Int
@@ -88,7 +91,28 @@ readCommand = do putStr "Command: "
                  line <- getLine
                  return (read line :: Int)
 
+
+callMinFreeSeats :: Database -> IO ()
+callMinFreeSeats db = do line <- readMinFreeSeats db
+                         printMinFreeSeats db line
+
+readMinFreeSeats :: Database -> IO String
+readMinFreeSeats db = do putStrLn "Enter 'TrainName WaggonNr StartStation EndStation': "
+                         line <- getLine
+                         return line
+
+printMinFreeSeats :: Database -> String -> IO ()
+printMinFreeSeats db line  = putStrLn ("Min free seats: " ++ (show min))
+                             where min = queryMinFreeSeats db (arg (line,0)) (argInt (line,1)) (argInt (line,2)) (argInt (line,3))
+
 -- Selectors
+
+arg :: (String,Int) -> String
+arg (line,idx)  = (words line)!!idx
+
+argInt :: (String,Int) -> Int
+argInt (line,idx)  = read ((words line)!!idx)::Int
+
 name :: Train -> TrainName
 name (n,_,_)  =  n
 
@@ -99,7 +123,7 @@ freeSeats :: Train -> FreeSeatsWithoutReservationCount
 freeSeats (_,_,s)  =  s
 
 waggonNumber :: Reservation -> WaggonNumber
-waggonNumber (_,nr,_,_,_)	= nr
+waggonNumber (_,nr,_,_,_)    = nr
 
 startStation :: Reservation -> StartStation
 startStation (_,_,s,_,_)    = s
@@ -108,7 +132,7 @@ endStation :: Reservation -> EndStation
 endStation (_,_,_,s,_)    = s
 
 reservedSeats :: Reservation -> Int
-reservedSeats (_, _, _, _, (SingleReservation _))   = 1			-- single reservations only reserve one seat
+reservedSeats (_, _, _, _, (SingleReservation _))   = 1           -- single reservations only reserve one seat
 reservedSeats (_,_,_,_,(GroupReservation n))        = n
 
 -- get the array of reservations for the given waggonNr, compute the reserved seats for each reservation and sum up

@@ -103,7 +103,7 @@ readMinFreeSeats db = do putStr "Enter 'TrainName WaggonNr StartStation EndStati
 
 printMinFreeSeats :: Database -> String -> IO ()
 printMinFreeSeats db line  = putStrLn ("Min free seats: " ++ (show min))
-                             where min = queryMinFreeSeats db (arg (line,0)) (argInt (line,1)) (argInt (line,2)) (argInt (line,3))
+                             where min = queryFreeSeats db (arg (line,0)) (argInt (line,1)) (argInt (line,2)) (argInt (line,3))
 
 -- ########################
 -- Selectors
@@ -144,6 +144,14 @@ reservedSeats :: Reservation -> Int
 reservedSeats (_, _, _, _, (SingleReservation _))   = 1           -- single reservations only reserve one seat
 reservedSeats (_,_,_,_,(GroupReservation n))        = n           -- group reservation: number of People
 
+-- seatNumber for Reservation
+seatNumber :: Reservation -> Int
+seatNumber (_, _, _, _, (SingleReservation s)) =  s
+seatNumber (_, _, _, _, (GroupReservation _)) =  -1
+
+allStations :: Reservation -> [Station]
+allStations (_, _, startStation, endStation, _) = range (startStation, endStation-1)
+
 -- ########################
 -- Queries
 -- ########################
@@ -153,7 +161,6 @@ reservedSeatsForWaggonInStation :: [Reservation] -> WaggonNumber -> Station -> I
 reservedSeatsForWaggonInStation reservations waggonNr station  = sum (map reservedSeats [r | r <- reservations, waggonNumber(r) == waggonNr, startStation(r) <= station, endStation(r) > station])
 
 -- queries the minimum count of free seats between two stations
-queryMinFreeSeats :: Database -> 
 queryFreeSeats :: Database -> TrainName -> WaggonNumber -> StartStation -> EndStation -> Int
 queryFreeSeats (_,[]) _ _ _ _      = 0
 queryFreeSeats db@(trains,reservations) trainName waggonNr startStation endStation = snd(waggon) - reservedSeatsInWaggon
@@ -162,3 +169,9 @@ queryFreeSeats db@(trains,reservations) trainName waggonNr startStation endStati
                  -- iterate through Stations and calculate Number of reserved Seats per Station
             reservedSeatsInWaggon = maximum (map (reservedSeatsForWaggonInStation reservations waggonNr) (range (startStation, endStation)))
             
+querySeatReservedForStations :: Database -> TrainName -> WaggonNumber -> SeatNumber -> [Station]
+querySeatReservedForStations (_,[]) _ _ _ = []
+querySeatReservedForStations db@(trains,reservations) trainName waggonNr seatNr = nub (concat (map allStations reservations))
+      where train = [t | t <- trains, name(t) == trainName]!!0            -- get train with given Name
+            waggon = [w | w <- waggons(train), fst(w) == waggonNr]!!0     -- get waggon of train with given Number
+            reservations = [r | r <- reservations, seatNumber(r) == seatNr]

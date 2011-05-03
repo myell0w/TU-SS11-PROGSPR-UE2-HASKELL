@@ -33,13 +33,14 @@ type Station		 				  = Int
 type StartStation    				  = Station
 type EndStation		 				  = Station
 type WaggonNumber	 				  = Int
-type WaggonCount					  = Int
 type SeatNumber		 				  = Int
 type SeatCountPerWaggon 			  = Int
 type FreeSeatsWithoutReservationCount = Int
 type TrainName		 				  = String
 
-type Train			 = (TrainName, WaggonCount, SeatCountPerWaggon, FreeSeatsWithoutReservationCount)
+
+type Waggon          = (WaggonNumber, SeatCountPerWaggon, FreeSeatsWithoutReservationCount)
+type Train			 = (TrainName, [Waggon])
 
 data SeatReservation = SingleReservation WaggonNumber SeatNumber |
 				   	   GroupReservation WaggonNumber deriving (Show, Read, Eq)

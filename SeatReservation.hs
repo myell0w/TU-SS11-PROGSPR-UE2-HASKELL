@@ -108,7 +108,9 @@ printMinFreeSeats db line  = putStrLn ("Min free seats: " ++ (show min))
                              -- compute the minimum, extract the parameters from the line that was input by the user
                              where min = queryMinFreeSeats db (arg (line,0)) (argInt (line,1)) (argInt (line,2)) (argInt (line,3))
 
+-- ########################
 -- Selectors
+-- ########################
 
 -- get the word with index idx of the line and return it as string
 arg :: (String,Int) -> String
@@ -118,27 +120,38 @@ arg (line,idx)  = (words line)!!idx
 argInt :: (String,Int) -> Int
 argInt (line,idx)  = read ((words line)!!idx)::Int
 
+-- Name of the Train
 name :: Train -> TrainName
 name (n,_,_)  =  n
 
+-- Array of Waggons of the Train
 waggons :: Train -> [Waggon]
 waggons (_,w,_)  = w
 
+-- Number offree Seats per Train that must retain without reservation
 freeSeats :: Train -> FreeSeatsWithoutReservationCount
 freeSeats (_,_,s)  =  s
 
+-- Identifier for Waggon
 waggonNumber :: Reservation -> WaggonNumber
 waggonNumber (_,nr,_,_,_)    = nr
 
+-- Startstation of Reservation
 startStation :: Reservation -> StartStation
 startStation (_,_,s,_,_)    = s
 
+-- EndStation of Reservation
 endStation :: Reservation -> EndStation
 endStation (_,_,_,s,_)    = s
 
+-- reserved Seats for Reservation
 reservedSeats :: Reservation -> Int
 reservedSeats (_, _, _, _, (SingleReservation _))   = 1           -- single reservations only reserve one seat
-reservedSeats (_,_,_,_,(GroupReservation n))        = n
+reservedSeats (_,_,_,_,(GroupReservation n))        = n           -- group reservation: number of People
+
+-- ########################
+-- Queries
+-- ########################
 
 
 -- returns the number of reserved seats for the combination (Waggon,Station)
@@ -149,10 +162,12 @@ reservedSeatsForWaggonInStation :: [Reservation] -> WaggonNumber -> Station -> I
 reservedSeatsForWaggonInStation reservations waggonNr station  = sum (map reservedSeats [r | r <- reservations, waggonNumber(r) == waggonNr, startStation(r) <= station, endStation(r) > station])
 
 -- queries the minimum count of free seats between two stations
-queryMinFreeSeats :: Database -> TrainName -> WaggonNumber -> StartStation -> EndStation -> Int
-queryMinFreeSeats (_,[]) _ _ _ _      = 0
-queryMinFreeSeats db@(trains,reservations) trainName waggonNr startStation endStation = snd(waggon) - reservedSeatsInWaggon
-      where train = [t | t <- trains, name(t) == trainName]!!0
-            waggon = [w | w <- waggons(train), fst(w) == waggonNr]!!0
+queryMinFreeSeats :: Database -> 
+queryFreeSeats :: Database -> TrainName -> WaggonNumber -> StartStation -> EndStation -> Int
+queryFreeSeats (_,[]) _ _ _ _      = 0
+queryFreeSeats db@(trains,reservations) trainName waggonNr startStation endStation = snd(waggon) - reservedSeatsInWaggon
+      where train = [t | t <- trains, name(t) == trainName]!!0            -- get train with given Name
+            waggon = [w | w <- waggons(train), fst(w) == waggonNr]!!0     -- get waggon of train with given Number
+                 -- iterate through Stations and calculate Number of reserved Seats per Station
             reservedSeatsInWaggon = maximum (map (reservedSeatsForWaggonInStation reservations waggonNr) (range (startStation, endStation)))
             

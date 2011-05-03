@@ -91,25 +91,30 @@ readCommand = do putStr "Command: "
                  line <- getLine
                  return (read line :: Int)
 
-
+-- reads the parameters for the call to min free seats, computes them and prints them to stdout
 callMinFreeSeats :: Database -> IO ()
 callMinFreeSeats db = do line <- readMinFreeSeats db
                          printMinFreeSeats db line
 
+-- reads a line from stdin containing the parameters for the call to min free seats
 readMinFreeSeats :: Database -> IO String
 readMinFreeSeats db = do putStr "Enter 'TrainName WaggonNr StartStation EndStation': "
                          line <- getLine
                          return line
 
+-- calls min free seats and prints it to stdout
 printMinFreeSeats :: Database -> String -> IO ()
 printMinFreeSeats db line  = putStrLn ("Min free seats: " ++ (show min))
+                             -- compute the minimum, extract the parameters from the line that was input by the user
                              where min = queryMinFreeSeats db (arg (line,0)) (argInt (line,1)) (argInt (line,2)) (argInt (line,3))
 
 -- Selectors
 
+-- get the word with index idx of the line and return it as string
 arg :: (String,Int) -> String
 arg (line,idx)  = (words line)!!idx
 
+-- get the word with index idx of the line and return it as Int
 argInt :: (String,Int) -> Int
 argInt (line,idx)  = read ((words line)!!idx)::Int
 
@@ -135,8 +140,12 @@ reservedSeats :: Reservation -> Int
 reservedSeats (_, _, _, _, (SingleReservation _))   = 1           -- single reservations only reserve one seat
 reservedSeats (_,_,_,_,(GroupReservation n))        = n
 
--- get the array of reservations for the given waggonNr, compute the reserved seats for each reservation and sum up
+
+-- returns the number of reserved seats for the combination (Waggon,Station)
 reservedSeatsForWaggonInStation :: [Reservation] -> WaggonNumber -> Station -> Int
+                                                              -- get the array of reservations for the given waggonNr, compute the reserved seats for each reservation and sum up
+                                                              -- a reservation counts for a station if the startStation was lower or equal than the queried station and the endStation was greater
+                                                              -- that means a reservation from station 2 to 5 doesn't count for station 5 since the passangers leave the train there
 reservedSeatsForWaggonInStation reservations waggonNr station  = sum (map reservedSeats [r | r <- reservations, waggonNumber(r) == waggonNr, startStation(r) <= station, endStation(r) > station])
 
 -- queries the minimum count of free seats between two stations

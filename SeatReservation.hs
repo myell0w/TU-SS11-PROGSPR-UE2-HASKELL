@@ -97,7 +97,7 @@ callMinFreeSeats db = do line <- readMinFreeSeats db
                          printMinFreeSeats db line
 
 readMinFreeSeats :: Database -> IO String
-readMinFreeSeats db = do putStrLn "Enter 'TrainName WaggonNr StartStation EndStation': "
+readMinFreeSeats db = do putStr "Enter 'TrainName WaggonNr StartStation EndStation': "
                          line <- getLine
                          return line
 

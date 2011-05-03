@@ -40,7 +40,9 @@ type SeatCountPerWaggon 			  = Int
 type FreeSeatsWithoutReservationCount = Int
 type TrainName		 				  = String
 
-type Train			 = (TrainName, WaggonCount, SeatCountPerWaggon, FreeSeatsWithoutReservationCount)
+
+type Waggon          = (WaggonNumber, SeatCountPerWaggon, FreeSeatsWithoutReservationCount)
+type Train			 = (TrainName, [Waggon])
 
 data SeatReservation = SingleReservation WaggonNumber SeatNumber |
 				   	   GroupReservation WaggonNumber PersonCount deriving (Show, Read, Eq)

@@ -66,11 +66,14 @@ mainLoop :: Database -> IO ()
 mainLoop db@(trains, reservations) = do
     command <- readCommand
     case command of
-        0    -> putStrLn "Beenden..." 
-        1    -> callMinFreeSeats db
-        _    -> mainLoop db
+        1    -> callMinMaxSeats db
+        _    -> putStrLn "Unknown Command!"
+    checkAndContinue db command
 
-
+-- continues the mainLoop as long as the command is != 0
+checkAndContinue :: Database -> Int -> IO()
+checkAndContinue db command  | command == 0   = putStrLn "End..." 
+                             | otherwise      = mainLoop db
 
 -- Loads the database with path fileName and returns it
 -- if the file doesn't exists, return an empty database
@@ -91,22 +94,22 @@ readCommand = do putStr "Command: "
                  line <- getLine
                  return (read line :: Int)
 
--- reads the parameters for the call to min free seats, computes them and prints them to stdout
-callMinFreeSeats :: Database -> IO ()
-callMinFreeSeats db = do line <- readMinFreeSeats db
-                         printMinFreeSeats db line
+-- reads the parameters for the call to min/max seats, computes them and prints them to stdout
+callMinMaxSeats :: Database -> IO ()
+callMinMaxSeats db = do line <- readMinMaxSeats db
+                        printMinMaxSeats db line
 
--- reads a line from stdin containing the parameters for the call to min free seats
-readMinFreeSeats :: Database -> IO String
-readMinFreeSeats db = do putStr "Enter 'TrainName WaggonNr StartStation EndStation': "
-                         line <- getLine
-                         return line
+-- reads a line from stdin containing the parameters for the call to min/max seats
+readMinMaxSeats :: Database -> IO String
+readMinMaxSeats db = do putStr "Enter 'TrainName WaggonNr StartStation EndStation': "
+                        line <- getLine
+                        return line
 
--- calls min free seats and prints it to stdout
-printMinFreeSeats :: Database -> String -> IO ()
-printMinFreeSeats db line  = putStrLn ("Min free seats: " ++ (show min))
+-- calls min/max seats and prints it to stdout
+printMinMaxSeats :: Database -> String -> IO ()
+printMinMaxSeats db line  = putStrLn ("Min free seats: " ++ (show min) ++ ", max reserved seats: " ++ (show max))
                              -- compute the minimum, extract the parameters from the line that was input by the user
-                             where min = queryMinFreeSeats db (arg (line,0)) (argInt (line,1)) (argInt (line,2)) (argInt (line,3))
+                            where (min,max) = queryMinMaxSeats db (arg (line,0)) (argInt (line,1)) (argInt (line,2)) (argInt (line,3))
 
 -- ########################
 -- Selectors
@@ -162,10 +165,9 @@ reservedSeatsForWaggonInStation :: [Reservation] -> WaggonNumber -> Station -> I
 reservedSeatsForWaggonInStation reservations waggonNr station  = sum (map reservedSeats [r | r <- reservations, waggonNumber(r) == waggonNr, startStation(r) <= station, endStation(r) > station])
 
 -- queries the minimum count of free seats between two stations
-queryMinFreeSeats :: Database -> 
-queryFreeSeats :: Database -> TrainName -> WaggonNumber -> StartStation -> EndStation -> Int
-queryFreeSeats (_,[]) _ _ _ _      = 0
-queryFreeSeats db@(trains,reservations) trainName waggonNr startStation endStation = snd(waggon) - reservedSeatsInWaggon
+queryMinMaxSeats :: Database -> TrainName -> WaggonNumber -> StartStation -> EndStation -> (Int,Int)
+queryMinMaxSeats (_,[]) _ _ _ _                                                      = (0,0) -- No reservations means no seats
+queryMinMaxSeats db@(trains,reservations) trainName waggonNr startStation endStation = (snd(waggon) - reservedSeatsInWaggon, reservedSeatsInWaggon)
       where train = [t | t <- trains, name(t) == trainName]!!0            -- get train with given Name
             waggon = [w | w <- waggons(train), fst(w) == waggonNr]!!0     -- get waggon of train with given Number
                  -- iterate through Stations and calculate Number of reserved Seats per Station

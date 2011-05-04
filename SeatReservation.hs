@@ -67,6 +67,7 @@ mainLoop db@(trains, reservations) = do
     command <- readCommand
     case command of
         1    -> callMinMaxSeats db
+        2    -> callSeatReservedForStations db
         _    -> putStrLn "Unknown Command!"
     checkAndContinue db command
 
@@ -96,14 +97,9 @@ readCommand = do putStr "Command: "
 
 -- reads the parameters for the call to min/max seats, computes them and prints them to stdout
 callMinMaxSeats :: Database -> IO ()
-callMinMaxSeats db = do line <- readMinMaxSeats db
-                        printMinMaxSeats db line
-
--- reads a line from stdin containing the parameters for the call to min/max seats
-readMinMaxSeats :: Database -> IO String
-readMinMaxSeats db = do putStr "Enter 'TrainName WaggonNr StartStation EndStation': "
+callMinMaxSeats db = do putStr "Enter 'TrainName WaggonNr StartStation EndStation': "
                         line <- getLine
-                        return line
+                        printMinMaxSeats db line
 
 -- calls min/max seats and prints it to stdout
 printMinMaxSeats :: Database -> String -> IO ()
@@ -111,6 +107,14 @@ printMinMaxSeats db line  = putStrLn ("Min free seats: " ++ (show min) ++ ", max
                              -- compute the minimum, extract the parameters from the line that was input by the user
                             where (min,max) = queryMinMaxSeats db (arg (line,0)) (argInt (line,1)) (argInt (line,2)) (argInt (line,3))
 
+callSeatReservedForStations :: Database -> IO ()
+callSeatReservedForStations db = do putStr "Enter 'TranName WaggonNr SeatNr': "
+                                    line <- getLine
+                                    printSeatReservedForStations db line
+
+printSeatReservedForStations :: Database -> String -> IO ()
+printSeatReservedForStations db line = putStrLn ("Seat is reserved for Stations: " ++ (concat (map show stations)))
+                                       where stations = querySeatReservedForStations db (arg (line,0)) (argInt (line,1)) (argInt (line,2))
 
 -- ########################
 -- Selectors
@@ -158,6 +162,10 @@ seatNumber :: Reservation -> Int
 seatNumber (_, _, _, _, (SingleReservation s)) =  s
 seatNumber (_, _, _, _, (GroupReservation _)) =  -1
 
+groupSize :: Reservation -> Int
+groupSize (_, _, _, _, (GroupReservation s)) =  s
+groupSize (_, _, _, _, (SingleReservation _)) = 0
+
 allStations :: Reservation -> [Station]
 allStations (_, _, startStation, endStation, _) = range (startStation, endStation-1)
 
@@ -184,7 +192,9 @@ queryMinMaxSeats db@(trains,reservations) trainName waggonNr startStation endSta
             
 querySeatReservedForStations :: Database -> TrainName -> WaggonNumber -> SeatNumber -> [Station]
 querySeatReservedForStations (_,[]) _ _ _ = []
-querySeatReservedForStations db@(trains,reservations) trainName waggonNr seatNr = nub (concat (map allStations reservations))
+querySeatReservedForStations db@(trains,reservations) trainName waggonNr seatNr = nub (concat (map allStations res))
       where train = [t | t <- trains, name(t) == trainName]!!0            -- get train with given Name
             waggon = [w | w <- waggons(train), fst(w) == waggonNr]!!0     -- get waggon of train with given Number
-            reservations = [r | r <- reservations, seatNumber(r) == seatNr]
+            res = [r | r <- reservations, seatNumber(r) == seatNr, waggonNumber(r) == waggonNr]
+
+			           

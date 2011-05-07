@@ -223,6 +223,12 @@ queryGroupreservationForStations db@(trains,reservations) trainName waggonNr = (
 -- ########################
 -- Reservation-Queries
 -- ########################
+
+checkReservation :: Database -> Reservation -> Bool
+checkReservation db (trainName, waggonNumber, startStation, endStation, (SingleReservation s)) = checkSingleReservation db trainName waggonNumber s startStation endStation
+checkReservation db (trainName, waggonNumber, startStation, endStation, (GroupReservation c))  = checkGroupReservation db trainName waggonNumber c startStation endStation
+checkReservation _ _                                                                           = False
+
 checkSingleReservation :: Database -> TrainName -> WaggonNumber -> SeatNumber -> StartStation -> EndStation -> Bool
 checkSingleReservation db@(trains,reservations) trainName waggonNr seatNr startStation endStation
     | fst(queryMinMaxSeats db trainName waggonNr startStation endStation) > 0 &&

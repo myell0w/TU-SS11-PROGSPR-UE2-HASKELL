@@ -45,11 +45,11 @@ type FreeSeatsWithoutReservationCount = Int
 type TrainName                        = String
 
 
-type Waggon          = (WaggonNumber, SeatCountPerWaggon)
-type Train             = (TrainName, [Waggon], FreeSeatsWithoutReservationCount)
+type Waggon           = (WaggonNumber, SeatCountPerWaggon)
+type Train            = (TrainName, [Waggon], FreeSeatsWithoutReservationCount)
 
-data SeatReservation = SingleReservation SeatNumber |
-                          GroupReservation PersonCount deriving (Show, Read, Eq)
+data SeatReservation  = SingleReservation SeatNumber |
+                        GroupReservation PersonCount deriving (Show, Read, Eq)
 
 type Reservation      = (TrainName, WaggonNumber, StartStation, EndStation, SeatReservation)
 type Database         = ([Train], [Reservation])
@@ -59,26 +59,31 @@ type Database         = ([Train], [Reservation])
 main :: IO ()
 main = do db <- loadDatabase kFileName
           mainLoop db
-          saveDatabase db kFileName
 
 -- does all the work
 mainLoop :: Database -> IO ()
 mainLoop db@(trains, reservations) = do
     command <- readCommand
-    case command of
-        1    -> callMinMaxSeats db
-        2    -> callSeatReservedForStations db
-        3    -> callGroupreservationForStations db
-        0    -> putStr "Ending ..."
+    case (argInt (command, 0)) of
+        1    -> callMinMaxSeats db (tail command)
+        2    -> callSeatReservedForStations db (tail command)
+        3    -> callGroupreservationForStations db (tail command)
+        4    -> putStr "Making reservation..."
+        5    -> putStr "Making reservation..."
+        0    -> putStr "Ending ...Bye bye!"
         _    -> putStrLn "Unknown Command!"
-    if command /= 0 then mainLoop db else putStr "Bye bye!"
+    let newDB = case (argInt (command, 0)) of
+	    4    -> callMakeSingleReservation db (tail command)
+	    5    -> callMakeGroupReservation db (tail command)
+	    _    -> db
+    if (argInt (command, 0)) /= 0 then mainLoop newDB else saveDatabase newDB kFileName
 
 -- Loads the database with path fileName and returns it
 -- if the file doesn't exists, return an empty database
 loadDatabase :: String -> IO Database
 loadDatabase fileName = catch (do fileContent <- readFile fileName    -- try to read db
-                                  return (read fileContent))        -- cast db to Database
-                              (\e -> return ([],[]))                -- on error return empty db (e.g. file doesn't exist)
+                                  return (read fileContent))          -- cast db to Database
+                              (\e -> return ([],[]))                  -- on error return empty db (e.g. file doesn't exist)
 
 
 -- Saves the database db into a file with name fileName
@@ -87,48 +92,48 @@ saveDatabase db fileName = writeFile fileName (show db)
     
 
 -- reads the next command from stdin (Integer)
-readCommand :: IO Int
+readCommand :: IO String
 readCommand = do putStrLn "1 .. Show minimum of free seats and maximum of occupied seats (Query 1)"
+                 putStrLn "     Enter 'TrainName WaggonNumber StartStation EndStation'"
                  putStrLn "2 .. Show statistics for specific seat in a waggon (Query 2)"
+                 putStrLn "     Enter 'TrainName WaggonNumber SeatNumber'"
                  putStrLn "3 .. Show statistics of group reservations for a specific waggon (Query 3)"
+                 putStrLn "     Enter 'TrainName WaggonNumber'"
                  putStrLn "4 .. Make a single reservation"
+                 putStrLn "     Enter 'TrainName WaggonNumber StartStation EndStation SeatNumber'"
                  putStrLn "5 .. Make a group reservation"
+                 putStrLn "     Enter 'TrainName WaggonNumber StartStation EndStation GroupSize'"
                  putStrLn "0 .. Quit"
                  putStrLn "-----------------------------------------------------------------------------"
                  putStr "Command: "
                  line <- getLine
-                 return (read line :: Int)
+                 return line
 
--- reads the parameters for the call to min/max seats, computes them and prints them to stdout
-callMinMaxSeats :: Database -> IO ()
-callMinMaxSeats db = do putStr "Enter 'TrainName WaggonNumber StartStation EndStation': "
-                        line <- getLine
-                        printMinMaxSeats db line
 
 -- calls min/max seats and prints it to stdout
-printMinMaxSeats :: Database -> String -> IO ()
-printMinMaxSeats db line  = putStrLn ("Min free seats: " ++ (show min) ++ ", max reserved seats: " ++ (show max))
+callMinMaxSeats :: Database -> String -> IO ()
+callMinMaxSeats db line  = putStrLn ("Min free seats: " ++ (show min) ++ ", max reserved seats: " ++ (show max))
                              -- compute the minimum, extract the parameters from the line that was input by the user
                             where (min,max) = queryMinMaxSeats db (arg (line,0)) (argInt (line,1)) (argInt (line,2)) (argInt (line,3))
 
-callSeatReservedForStations :: Database -> IO ()
-callSeatReservedForStations db = do putStr "Enter 'TrainName WaggonNumber SeatNumber': "
-                                    line <- getLine
-                                    printSeatReservedForStations db line
-
-printSeatReservedForStations :: Database -> String -> IO ()
-printSeatReservedForStations db line = putStrLn ("Seat is reserved for Stations: " ++ (concat (map show stations)))
-                                       where stations = querySeatReservedForStations db (arg (line,0)) (argInt (line,1)) (argInt (line,2))
+callSeatReservedForStations :: Database -> String -> IO ()
+callSeatReservedForStations db line = putStrLn ("Seat is reserved for Stations: " ++ (concat (map show stations)))
+                                      where stations = querySeatReservedForStations db (arg (line,0)) (argInt (line,1)) (argInt (line,2))
 
 
-callGroupreservationForStations :: Database -> IO ()
-callGroupreservationForStations db = do putStr "Enter 'TranName WaggonNumber': "
-                                        line <- getLine
-                                        printGroupereservationForStations db line
-
-printGroupereservationForStations :: Database -> String -> IO ()
-printGroupereservationForStations db line = putStrLn ("There exist following Groupreservations: " ++ (concat (map show groupres)))
+callGroupreservationForStations :: Database -> String -> IO ()
+callGroupreservationForStations db line = putStrLn ("There exist following Groupreservations: " ++ (concat (map show groupres)))
                                             where groupres = queryGroupreservationForStations db (arg (line,0)) (argInt (line,1))
+
+callMakeSingleReservation :: Database -> String -> Database
+callMakeSingleReservation db@(trains,reservations) line =  if isValid == True then (trains,reservations++[reservation]) else db
+                                     where reservation = (arg (line,0), argInt (line,1), argInt (line,2), argInt (line,3), (SingleReservation (argInt (line,4))))
+                                           isValid     = checkReservation db reservation
+
+callMakeGroupReservation :: Database -> String -> Database
+callMakeGroupReservation db@(trains,reservations) line =  if isValid == True then (trains,reservations++[reservation]) else db
+                                     where reservation = (arg (line,0), argInt (line,1), argInt (line,2), argInt (line,3), (GroupReservation (argInt (line,4))))
+                                           isValid     = checkReservation db reservation
 
 -- ########################
 -- Selectors
@@ -214,7 +219,7 @@ querySeatReservedForStations db@(trains,reservations) trainName waggonNr seatNr 
             res = [r | r <- reservations, seatNumber(r) == seatNr, waggonNumber(r) == waggonNr]
 
 queryGroupreservationForStations :: Database -> TrainName -> WaggonNumber -> [(Int, [Station])]
-queryGroupreservationForStations (_,[]) _ _ = []			           
+queryGroupreservationForStations (_,[]) _ _ = []                       
 queryGroupreservationForStations db@(trains,reservations) trainName waggonNr = (map groupSizeAndStations res)
      where train = [t | t <- trains, name(t) == trainName]!!0            -- get train with given Name
            waggon = [w | w <- waggons(train), fst(w) == waggonNr]!!0     -- get waggon of train with given Number

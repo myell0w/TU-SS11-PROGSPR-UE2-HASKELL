@@ -8,6 +8,8 @@
         ("Train1", 1, 1, 4, (SingleReservation 2)),
         ("Train1", 1, 2, 5, (SingleReservation 3)),
         ("Train1", 1, 1, 2, (SingleReservation 1)),
-        ("Train1", 1, 1, 2, (GroupReservation 5))
+        ("Train1", 1, 1, 2, (GroupReservation 5)),
+		("Train1", 1, 1, 6, (GroupReservation 3)),
+		("Train1", 1, 4, 8, (GroupReservation 2))
     ]
 )

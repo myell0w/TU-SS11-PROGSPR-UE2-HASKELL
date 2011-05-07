@@ -68,6 +68,7 @@ mainLoop db@(trains, reservations) = do
     case command of
         1    -> callMinMaxSeats db
         2    -> callSeatReservedForStations db
+        3    -> callGroupreservationForStations db
         _    -> putStrLn "Unknown Command!"
     checkAndContinue db command
 
@@ -115,6 +116,16 @@ callSeatReservedForStations db = do putStr "Enter 'TrainName WaggonNumber SeatNu
 printSeatReservedForStations :: Database -> String -> IO ()
 printSeatReservedForStations db line = putStrLn ("Seat is reserved for Stations: " ++ (concat (map show stations)))
                                        where stations = querySeatReservedForStations db (arg (line,0)) (argInt (line,1)) (argInt (line,2))
+
+
+callGroupreservationForStations :: Database -> IO ()
+callGroupreservationForStations db = do putStr "Enter 'TranName WaggonNumber': "
+                                        line <- getLine
+                                        printGroupereservationForStations db line
+
+printGroupereservationForStations :: Database -> String -> IO ()
+printGroupereservationForStations db line = putStrLn ("There exist following Groupreservations: " ++ (concat (map show groupres)))
+                                            where groupres = queryGroupreservationForStations db (arg (line,0)) (argInt (line,1))
 
 -- ########################
 -- Selectors
@@ -169,6 +180,9 @@ groupSize (_, _, _, _, (SingleReservation _)) = 0
 allStations :: Reservation -> [Station]
 allStations (_, _, startStation, endStation, _) = range (startStation, endStation-1)
 
+groupSizeAndStations :: Reservation -> (Int, [Station])
+groupSizeAndStations r = (groupSize(r), allStations(r))
+
 -- ########################
 -- Queries
 -- ########################
@@ -197,4 +211,9 @@ querySeatReservedForStations db@(trains,reservations) trainName waggonNr seatNr 
             waggon = [w | w <- waggons(train), fst(w) == waggonNr]!!0     -- get waggon of train with given Number
             res = [r | r <- reservations, seatNumber(r) == seatNr, waggonNumber(r) == waggonNr]
 
-			           
+queryGroupreservationForStations :: Database -> TrainName -> WaggonNumber -> [(Int, [Station])]
+queryGroupreservationForStations (_,[]) _ _ = []			           
+queryGroupreservationForStations db@(trains,reservations) trainName waggonNr = (map groupSizeAndStations res)
+     where train = [t | t <- trains, name(t) == trainName]!!0            -- get train with given Name
+           waggon = [w | w <- waggons(train), fst(w) == waggonNr]!!0     -- get waggon of train with given Number
+           res = [r | r <- reservations, groupSize(r) > 0, waggonNumber(r) == waggonNr]

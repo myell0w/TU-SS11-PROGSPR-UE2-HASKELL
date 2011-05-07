@@ -70,6 +70,7 @@ mainLoop db@(trains, reservations) = do
         3    -> callGroupreservationForStations db (tail command)
         4    -> putStr "Making reservation..."
         5    -> putStr "Making reservation..."
+        6    -> callPrintDB db
         0    -> putStr "Ending ...Bye bye!"
         _    -> putStrLn "Unknown Command!"
     let newDB = case (argInt (command, 0)) of
@@ -93,7 +94,8 @@ saveDatabase db fileName = writeFile fileName (show db)
 
 -- reads the next command from stdin (Integer)
 readCommand :: IO String
-readCommand = do putStrLn "1 .. Show minimum of free seats and maximum of occupied seats (Query 1)"
+readCommand = do putStrLn ""
+                 putStrLn "1 .. Show minimum of free seats and maximum of occupied seats (Query 1)"
                  putStrLn "     Enter 'TrainName WaggonNumber StartStation EndStation'"
                  putStrLn "2 .. Show statistics for specific seat in a waggon (Query 2)"
                  putStrLn "     Enter 'TrainName WaggonNumber SeatNumber'"
@@ -103,10 +105,12 @@ readCommand = do putStrLn "1 .. Show minimum of free seats and maximum of occupi
                  putStrLn "     Enter 'TrainName WaggonNumber StartStation EndStation SeatNumber'"
                  putStrLn "5 .. Make a group reservation"
                  putStrLn "     Enter 'TrainName WaggonNumber StartStation EndStation GroupSize'"
+                 putStrLn "6 .. Print Database"
                  putStrLn "0 .. Quit"
                  putStrLn "-----------------------------------------------------------------------------"
                  putStr "Command: "
                  line <- getLine
+                 putStrLn ""
                  return line
 
 
@@ -134,6 +138,13 @@ callMakeGroupReservation :: Database -> String -> Database
 callMakeGroupReservation db@(trains,reservations) line =  if isValid == True then (trains,reservations++[reservation]) else db
                                      where reservation = (arg (line,0), argInt (line,1), argInt (line,2), argInt (line,3), (GroupReservation (argInt (line,4))))
                                            isValid     = checkReservation db reservation
+
+callPrintDB :: Database -> IO ()
+callPrintDB db@(trains,reservations) = do
+            putStrLn ("-- Trains: --")
+            putStrLn (show trains)
+            putStrLn ("-- Reservations: --")
+            putStrLn (show reservations)
 
 -- ########################
 -- Selectors

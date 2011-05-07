@@ -69,13 +69,9 @@ mainLoop db@(trains, reservations) = do
         1    -> callMinMaxSeats db
         2    -> callSeatReservedForStations db
         3    -> callGroupreservationForStations db
+        0    -> putStr "Ending ..."
         _    -> putStrLn "Unknown Command!"
-    checkAndContinue db command
-
--- continues the mainLoop as long as the command is != 0
-checkAndContinue :: Database -> Int -> IO()
-checkAndContinue db command  | command == 0   = putStrLn "End..." 
-                             | otherwise      = mainLoop db
+    if command /= 0 then mainLoop db else putStr "Bye bye!"
 
 -- Loads the database with path fileName and returns it
 -- if the file doesn't exists, return an empty database
@@ -92,7 +88,14 @@ saveDatabase db fileName = writeFile fileName (show db)
 
 -- reads the next command from stdin (Integer)
 readCommand :: IO Int
-readCommand = do putStr "Command: "
+readCommand = do putStrLn "1 .. Show minimum of free seats and maximum of occupied seats (Query 1)"
+                 putStrLn "2 .. Show statistics for specific seat in a waggon (Query 2)"
+                 putStrLn "3 .. Show statistics of group reservations for a specific waggon (Query 3)"
+                 putStrLn "4 .. Make a single reservation"
+                 putStrLn "5 .. Make a group reservation"
+                 putStrLn "0 .. Quit"
+                 putStrLn "-----------------------------------------------------------------------------"
+                 putStr "Command: "
                  line <- getLine
                  return (read line :: Int)
 

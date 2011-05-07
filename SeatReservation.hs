@@ -221,7 +221,7 @@ queryGroupreservationForStations db@(trains,reservations) trainName waggonNr = (
            res = [r | r <- reservations, groupSize(r) > 0, waggonNumber(r) == waggonNr]
 
 -- ########################
--- Queries
+-- Reservation-Queries
 -- ########################
 checkSingleReservation :: Database -> TrainName -> WaggonNumber -> SeatNumber -> StartStation -> EndStation -> Bool
 checkSingleReservation db@(trains,reservations) trainName waggonNr seatNr startStation endStation

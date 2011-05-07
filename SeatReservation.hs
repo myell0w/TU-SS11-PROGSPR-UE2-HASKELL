@@ -187,7 +187,6 @@ groupSizeAndStations r = (groupSize(r), allStations(r))
 -- Queries
 -- ########################
 
-
 -- returns the number of reserved seats for the combination (Waggon,Station)
 reservedSeatsForWaggonInStation :: [Reservation] -> WaggonNumber -> Station -> Int
                                                               -- get the array of reservations for the given waggonNr, compute the reserved seats for each reservation and sum up
@@ -217,3 +216,17 @@ queryGroupreservationForStations db@(trains,reservations) trainName waggonNr = (
      where train = [t | t <- trains, name(t) == trainName]!!0            -- get train with given Name
            waggon = [w | w <- waggons(train), fst(w) == waggonNr]!!0     -- get waggon of train with given Number
            res = [r | r <- reservations, groupSize(r) > 0, waggonNumber(r) == waggonNr]
+
+-- ########################
+-- Queries
+-- ########################
+checkSingleReservation :: Database -> TrainName -> WaggonNumber -> SeatNumber -> StartStation -> EndStation -> Bool
+checkSingleReservation db@(trains,reservations) trainName waggonNr seatNr startStation endStation
+    | fst(queryMinMaxSeats db trainName waggonNr startStation endStation) > 0 &&
+      intersect (range (startStation, endStation-1)) (querySeatReservedForStations db trainName waggonNr seatNr) == [] = True
+    | otherwise = False
+
+checkGroupReservation :: Database -> TrainName -> WaggonNumber -> PersonCount -> StartStation -> EndStation -> Bool
+checkGroupReservation db@(trains,reservations) trainName waggonNr personCount startStation endStation
+   | fst(queryMinMaxSeats db trainName waggonNr startStation endStation) >= personCount = True
+   | otherwise = False

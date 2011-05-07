@@ -192,7 +192,7 @@ queryMinMaxSeats db@(trains,reservations) trainName waggonNr startStation endSta
             
 querySeatReservedForStations :: Database -> TrainName -> WaggonNumber -> SeatNumber -> [Station]
 querySeatReservedForStations (_,[]) _ _ _ = []
-querySeatReservedForStations db@(trains,reservations) trainName waggonNr seatNr = nub (concat (map allStations res))
+querySeatReservedForStations db@(trains,reservations) trainName waggonNr seatNr = if res == [] then nub (concat (map allStations res)) else []
       where train = [t | t <- trains, name(t) == trainName]!!0            -- get train with given Name
             waggon = [w | w <- waggons(train), fst(w) == waggonNr]!!0     -- get waggon of train with given Number
             res = [r | r <- reservations, seatNumber(r) == seatNr, waggonNumber(r) == waggonNr]

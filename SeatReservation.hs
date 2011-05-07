@@ -97,7 +97,7 @@ readCommand = do putStr "Command: "
 
 -- reads the parameters for the call to min/max seats, computes them and prints them to stdout
 callMinMaxSeats :: Database -> IO ()
-callMinMaxSeats db = do putStr "Enter 'TrainName WaggonNr StartStation EndStation': "
+callMinMaxSeats db = do putStr "Enter 'TrainName WaggonNumber StartStation EndStation': "
                         line <- getLine
                         printMinMaxSeats db line
 
@@ -108,7 +108,7 @@ printMinMaxSeats db line  = putStrLn ("Min free seats: " ++ (show min) ++ ", max
                             where (min,max) = queryMinMaxSeats db (arg (line,0)) (argInt (line,1)) (argInt (line,2)) (argInt (line,3))
 
 callSeatReservedForStations :: Database -> IO ()
-callSeatReservedForStations db = do putStr "Enter 'TranName WaggonNr SeatNr': "
+callSeatReservedForStations db = do putStr "Enter 'TrainName WaggonNumber SeatNumber': "
                                     line <- getLine
                                     printSeatReservedForStations db line
 

@@ -96,7 +96,7 @@ saveDatabase db fileName = writeFile fileName (show db)
 readCommand :: IO String
 readCommand = do putStrLn ""
                  putStrLn "1 .. Show minimum of free seats and maximum of occupied seats (Query 1)"
-                 putStrLn "     Enter 'TrainName WaggonNumber StartStation EndStation'"
+                 putStrLn "     Enter 'TrainName StartStation EndStation WaggonNumber'"
                  putStrLn "2 .. Show statistics for specific seat in a waggon (Query 2)"
                  putStrLn "     Enter 'TrainName WaggonNumber SeatNumber'"
                  putStrLn "3 .. Show statistics of group reservations for a specific waggon (Query 3)"
@@ -182,6 +182,10 @@ startStation (_,_,s,_,_)    = s
 endStation :: Reservation -> EndStation
 endStation (_,_,_,s,_)    = s
 
+-- Train of Reservation
+trainForReservation :: Reservation -> TrainName
+trainForReservation (t,_,_,_,_) = t
+
 -- reserved Seats for Reservation
 reservedSeats :: Reservation -> Int
 reservedSeats (_, _, _, _, (SingleReservation _))   = 1           -- single reservations only reserve one seat
@@ -190,10 +194,13 @@ reservedSeats (_,_,_,_,(GroupReservation n))        = n           -- group reser
 -- seatNumber for Reservation
 seatNumber :: Reservation -> Int
 seatNumber (_, _, _, _, (SingleReservation s)) =  s
+-- group reservations have no seat number assigned
 seatNumber (_, _, _, _, (GroupReservation _)) =  -1
+
 
 groupSize :: Reservation -> Int
 groupSize (_, _, _, _, (GroupReservation s)) =  s
+-- single reservations have a group size of 0
 groupSize (_, _, _, _, (SingleReservation _)) = 0
 
 allStations :: Reservation -> [Station]
@@ -213,45 +220,71 @@ reservedSeatsForWaggonInStation :: [Reservation] -> WaggonNumber -> Station -> I
                                                               -- that means a reservation from station 2 to 5 doesn't count for station 5 since the passangers leave the train there
 reservedSeatsForWaggonInStation reservations waggonNr station  = sum (map reservedSeats [r | r <- reservations, waggonNumber(r) == waggonNr, startStation(r) <= station, endStation(r) > station])
 
--- queries the minimum count of free seats between two stations
-queryMinMaxSeats :: Database -> TrainName -> WaggonNumber -> StartStation -> EndStation -> (Int,Int)
+-- queries the minimum count of free seats and the maximum count of reserved seats between two stations
+queryMinMaxSeats :: Database -> TrainName -> StartStation -> EndStation -> WaggonNumber -> (Int,Int)
 queryMinMaxSeats (_,[]) _ _ _ _                                                      = (0,0) -- No reservations means no seats
-queryMinMaxSeats db@(trains,reservations) trainName waggonNr startStation endStation = (snd(waggon) - reservedSeatsInWaggon, reservedSeatsInWaggon)
+ -- snd waggon gets the number of seats in the waggon
+queryMinMaxSeats db@(trains,reservations) trainName startStation endStation waggonNr = (snd(waggon) - reservedSeatsInWaggon, reservedSeatsInWaggon)
       where train = [t | t <- trains, name(t) == trainName]!!0            -- get train with given Name
             waggon = [w | w <- waggons(train), fst(w) == waggonNr]!!0     -- get waggon of train with given Number
-                 -- iterate through Stations and calculate Number of reserved Seats per Station
+                 -- iterate through Stations and calculate Number of reserved Seats per Station and get the maximum of it
             reservedSeatsInWaggon = maximum (map (reservedSeatsForWaggonInStation reservations waggonNr) (range (startStation, endStation)))
-            
+         
+-- queries all stations, for which the seatNumber int the waggon is reserved   
 querySeatReservedForStations :: Database -> TrainName -> WaggonNumber -> SeatNumber -> [Station]
 querySeatReservedForStations (_,[]) _ _ _ = []
-querySeatReservedForStations db@(trains,reservations) trainName waggonNr seatNr = if res == [] then nub (concat (map allStations res)) else []
+ -- if there are reservations for the given seat in the given waggon then get a duplicate-free array of all stations
+querySeatReservedForStations db@(trains,reservations) trainName waggonNr seatNr = if res /= [] then nub (concat (map allStations res)) else []
       where train = [t | t <- trains, name(t) == trainName]!!0            -- get train with given Name
             waggon = [w | w <- waggons(train), fst(w) == waggonNr]!!0     -- get waggon of train with given Number
-            res = [r | r <- reservations, seatNumber(r) == seatNr, waggonNumber(r) == waggonNr]
+            res = [r | r <- reservations, seatNumber(r) == seatNr, waggonNumber(r) == waggonNr] -- get all reservations for this seat in this waggon
 
+-- queries the pair (size of group reservation, array of stations) for all group reservations of a given waggon
+-- we don't remove duplicates by design to not loose the information of the stations associated to the group size
+-- that means there can be more pairs for the same stations, e.g. [(3,[1,2,3]), (2,[1,2,3]), (4,[1,2])]
 queryGroupreservationForStations :: Database -> TrainName -> WaggonNumber -> [(Int, [Station])]
-queryGroupreservationForStations (_,[]) _ _ = []                       
+queryGroupreservationForStations (_,[]) _ _ = []
 queryGroupreservationForStations db@(trains,reservations) trainName waggonNr = (map groupSizeAndStations res)
      where train = [t | t <- trains, name(t) == trainName]!!0            -- get train with given Name
            waggon = [w | w <- waggons(train), fst(w) == waggonNr]!!0     -- get waggon of train with given Number
-           res = [r | r <- reservations, groupSize(r) > 0, waggonNumber(r) == waggonNr]
+           res = [r | r <- reservations, groupSize(r) > 0, waggonNumber(r) == waggonNr] -- all group reservations for waggon
 
 -- ########################
 -- Reservation-Queries
 -- ########################
 
+-- checks if the new reservation, that reserves 'countSeatsForReservation' doesn't collide with the min free seats that 
+-- must stay free in the train.
+checkMinFreeSeatsInTrainAvailable :: Database -> TrainName -> StartStation -> EndStation -> Int -> Bool   
+ -- queries the min free seats between start and end and sums them up for all waggons
+ -- first queryMinMaxSeats gets mapped onto all waggonNumbers, fst gets mapped to get the min free seats and these are summed up
+ -- if these sum is greater or equal to the seats that must stay free in the train + the number of seats we want to reserve the requirement isn't violated
+checkMinFreeSeatsInTrainAvailable db@(trains,reservations) trainName start end countSeatsForReservation = sum (map fst (map (queryMinMaxSeats db trainName start end) waggonNumbers)) >= freeSeats train + countSeatsForReservation
+     where train = [t | t <- trains, name(t) == trainName]!!0            -- get train with given Name
+           waggonNumbers = [fst w | w <- waggons train]                  -- get numbers of all waggons of the train
+
+-- checks if a reservation is possible
 checkReservation :: Database -> Reservation -> Bool
-checkReservation db (trainName, waggonNumber, startStation, endStation, (SingleReservation s)) = checkSingleReservation db trainName waggonNumber s startStation endStation
-checkReservation db (trainName, waggonNumber, startStation, endStation, (GroupReservation c))  = checkGroupReservation db trainName waggonNumber c startStation endStation
+-- checks if a singleReservation is possible AND the requirement of the min free seats of the train isn't violated
+checkReservation db (trainName, waggonNumber, startStation, endStation, (SingleReservation s)) = (checkSingleReservation db trainName waggonNumber s startStation endStation) && (checkMinFreeSeatsInTrainAvailable db trainName startStation endStation 1)
+-- checks if a groupReservation is possible AND the requirement of the min free seats of the train isn't violated
+checkReservation db (trainName, waggonNumber, startStation, endStation, (GroupReservation c))  = (checkGroupReservation db trainName waggonNumber c startStation endStation)  && (checkMinFreeSeatsInTrainAvailable db trainName startStation endStation c)
 checkReservation _ _                                                                           = False
 
+-- checks if a single reservation is possible
 checkSingleReservation :: Database -> TrainName -> WaggonNumber -> SeatNumber -> StartStation -> EndStation -> Bool
 checkSingleReservation db@(trains,reservations) trainName waggonNr seatNr startStation endStation
-    | fst(queryMinMaxSeats db trainName waggonNr startStation endStation) > 0 &&
+ -- are there free seats in this waggon (fst gets the min free seats) ?
+    | fst(queryMinMaxSeats db trainName startStation endStation waggonNr) > 0 &&
+ -- is the intersection of {startStation, startStation+1, ... endStation-1} and {all stations the seat with number seatNr is reserved in waggon waggonNr} empty?
+ -- if yes -> reservation possible (this seat isn't already reserved for the given stations)
       intersect (range (startStation, endStation-1)) (querySeatReservedForStations db trainName waggonNr seatNr) == [] = True
     | otherwise = False
 
+-- checks if a group reservation is possible
 checkGroupReservation :: Database -> TrainName -> WaggonNumber -> PersonCount -> StartStation -> EndStation -> Bool
 checkGroupReservation db@(trains,reservations) trainName waggonNr personCount startStation endStation
-   | fst(queryMinMaxSeats db trainName waggonNr startStation endStation) >= personCount = True
+-- are there enough free seats is the waggon with given waggonNr?
+-- fst gets the min free seats, if this is bigger or equal than the seats we want to reserve -> possible
+   | fst(queryMinMaxSeats db trainName startStation endStation waggonNr) >= personCount = True
    | otherwise = False

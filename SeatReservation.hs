@@ -213,12 +213,12 @@ groupSizeAndStations r = (groupSize(r), allStations(r))
 -- Queries
 -- ########################
 
--- returns the number of reserved seats for the combination (Waggon,Station)
-reservedSeatsForWaggonInStation :: [Reservation] -> WaggonNumber -> Station -> Int
+-- returns the number of reserved seats for the combination (Train,Waggon,Station)
+reservedSeatsForWaggonInStation :: [Reservation] -> TrainName -> WaggonNumber -> Station -> Int
                                                               -- get the array of reservations for the given waggonNr, compute the reserved seats for each reservation and sum up
                                                               -- a reservation counts for a station if the startStation was lower or equal than the queried station and the endStation was greater
                                                               -- that means a reservation from station 2 to 5 doesn't count for station 5 since the passangers leave the train there
-reservedSeatsForWaggonInStation reservations waggonNr station  = sum (map reservedSeats [r | r <- reservations, waggonNumber(r) == waggonNr, startStation(r) <= station, endStation(r) > station])
+reservedSeatsForWaggonInStation reservations trainName waggonNr station  = sum (map reservedSeats [r | r <- reservations, trainForReservation r == trainName, waggonNumber r == waggonNr, startStation r <= station, endStation r > station])
 
 -- queries the minimum count of free seats and the maximum count of reserved seats between two stations
 queryMinMaxSeats :: Database -> TrainName -> StartStation -> EndStation -> WaggonNumber -> (Int,Int)
@@ -228,7 +228,7 @@ queryMinMaxSeats db@(trains,reservations) trainName startStation endStation wagg
       where train = [t | t <- trains, name(t) == trainName]!!0            -- get train with given Name
             waggon = [w | w <- waggons(train), fst(w) == waggonNr]!!0     -- get waggon of train with given Number
                  -- iterate through Stations and calculate Number of reserved Seats per Station and get the maximum of it
-            reservedSeatsInWaggon = maximum (map (reservedSeatsForWaggonInStation reservations waggonNr) (range (startStation, endStation)))
+            reservedSeatsInWaggon = maximum (map (reservedSeatsForWaggonInStation reservations trainName waggonNr) (range (startStation, endStation)))
          
 -- queries all stations, for which the seatNumber int the waggon is reserved   
 querySeatReservedForStations :: Database -> TrainName -> WaggonNumber -> SeatNumber -> [Station]

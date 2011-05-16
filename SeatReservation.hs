@@ -207,7 +207,7 @@ allStations :: Reservation -> [Station]
 allStations (_, _, startStation, endStation, _) = range (startStation, endStation-1)
 
 groupSizeAndStations :: Reservation -> (Int, [Station])
-groupSizeAndStations r = (groupSize(r), allStations(r))
+groupSizeAndStations r = (groupSize r, allStations r)
 
 -- ########################
 -- Queries
@@ -224,7 +224,7 @@ reservedSeatsForWaggonInStation reservations trainName waggonNr station  = sum (
 queryMinMaxSeats :: Database -> TrainName -> StartStation -> EndStation -> WaggonNumber -> (Int,Int)
 queryMinMaxSeats (_,[]) _ _ _ _                                                      = (0,0) -- No reservations means no seats
  -- snd waggon gets the number of seats in the waggon
-queryMinMaxSeats db@(trains,reservations) trainName startStation endStation waggonNr = (snd(waggon) - reservedSeatsInWaggon, reservedSeatsInWaggon)
+queryMinMaxSeats db@(trains,reservations) trainName startStation endStation waggonNr = ((snd waggon) - reservedSeatsInWaggon, reservedSeatsInWaggon)
       where train = [t | t <- trains, name(t) == trainName]!!0            -- get train with given Name
             waggon = [w | w <- waggons(train), fst(w) == waggonNr]!!0     -- get waggon of train with given Number
                  -- iterate through Stations and calculate Number of reserved Seats per Station and get the maximum of it

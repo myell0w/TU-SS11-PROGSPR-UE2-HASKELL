@@ -225,8 +225,8 @@ queryMinMaxSeats :: Database -> TrainName -> StartStation -> EndStation -> Waggo
 queryMinMaxSeats (_,[]) _ _ _ _                                                      = (0,0) -- No reservations means no seats
  -- snd waggon gets the number of seats in the waggon
 queryMinMaxSeats db@(trains,reservations) trainName startStation endStation waggonNr = ((snd waggon) - reservedSeatsInWaggon, reservedSeatsInWaggon)
-      where train = [t | t <- trains, name(t) == trainName]!!0            -- get train with given Name
-            waggon = [w | w <- waggons(train), fst(w) == waggonNr]!!0     -- get waggon of train with given Number
+      where train = [t | t <- trains, name t == trainName]!!0            -- get train with given Name
+            waggon = [w | w <- waggons train, fst w == waggonNr]!!0     -- get waggon of train with given Number
                  -- iterate through Stations and calculate Number of reserved Seats per Station and get the maximum of it
             reservedSeatsInWaggon = maximum (map (reservedSeatsForWaggonInStation reservations trainName waggonNr) (range (startStation, endStation)))
          
@@ -235,7 +235,7 @@ querySeatReservedForStations :: Database -> TrainName -> WaggonNumber -> SeatNum
 querySeatReservedForStations (_,[]) _ _ _ = []
  -- if there are reservations for the given seat in the given waggon then get a duplicate-free array of all stations
 querySeatReservedForStations db@(trains,reservations) trainName waggonNr seatNr = if res /= [] then nub (concat (map allStations res)) else []
-      where res = [r | r <- reservations, seatNumber(r) == seatNr, waggonNumber(r) == waggonNr, trainForReservation r == trainName] -- get all reservations for this seat in this waggon
+      where res = [r | r <- reservations, seatNumber r == seatNr, waggonNumber r == waggonNr, trainForReservation r == trainName] -- get all reservations for this seat in this waggon
 
 -- queries the pair (size of group reservation, array of stations) for all group reservations of a given waggon
 -- we don't remove duplicates by design to not loose the information of the stations associated to the group size
@@ -243,7 +243,7 @@ querySeatReservedForStations db@(trains,reservations) trainName waggonNr seatNr 
 queryGroupreservationForStations :: Database -> TrainName -> WaggonNumber -> [(Int, [Station])]
 queryGroupreservationForStations (_,[]) _ _ = []
 queryGroupreservationForStations db@(trains,reservations) trainName waggonNr = (map groupSizeAndStations res)
-     where res = [r | r <- reservations, groupSize(r) > 0, waggonNumber(r) == waggonNr, trainForReservation r == trainName] -- all group reservations for waggon
+     where res = [r | r <- reservations, groupSize r > 0, waggonNumber r == waggonNr, trainForReservation r == trainName] -- all group reservations for waggon
 
 -- ########################
 -- Reservation-Queries
@@ -256,7 +256,7 @@ checkMinFreeSeatsInTrainAvailable :: Database -> TrainName -> StartStation -> En
  -- first queryMinMaxSeats gets mapped onto all waggonNumbers, fst gets mapped to get the min free seats and these are summed up
  -- if these sum is greater or equal to the seats that must stay free in the train + the number of seats we want to reserve the requirement isn't violated
 checkMinFreeSeatsInTrainAvailable db@(trains,reservations) trainName start end countSeatsForReservation = sum (map fst (map (queryMinMaxSeats db trainName start end) waggonNumbers)) >= freeSeats train + countSeatsForReservation
-     where train = [t | t <- trains, name(t) == trainName]!!0            -- get train with given Name
+     where train = [t | t <- trains, name t == trainName]!!0            -- get train with given Name
            waggonNumbers = [fst w | w <- waggons train]                  -- get numbers of all waggons of the train
 
 -- checks if a reservation is possible

@@ -287,8 +287,11 @@ checkSingleReservation db@(trains,reservations) trainName waggonNr seatNr startS
     | fst(queryMinMaxSeats db trainName startStation endStation waggonNr) > 0 &&
  -- is the intersection of {startStation, startStation+1, ... endStation-1} and {all stations the seat with number seatNr is reserved in waggon waggonNr} empty?
  -- if yes -> reservation possible (this seat isn't already reserved for the given stations)
-      intersect (range (startStation, endStation-1)) (querySeatReservedForStations db trainName waggonNr seatNr) == [] = True
+      intersect (range (startStation, endStation-1)) (querySeatReservedForStations db trainName waggonNr seatNr) == [] &&
+      (snd waggon) >= seatNr && seatNr > 0 = True
     | otherwise = False
+      where train = [t | t <- trains, name t == trainName]!!0            -- get train with given Name
+            waggon = [w | w <- waggons train, fst w == waggonNr]!!0     -- get waggon of train with given Number
 
 -- checks if a group reservation is possible
 checkGroupReservation :: Database -> TrainName -> WaggonNumber -> PersonCount -> StartStation -> EndStation -> Bool

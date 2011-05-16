@@ -142,9 +142,17 @@ callMakeGroupReservation db@(trains,reservations) line =  if isValid == True the
 callPrintDB :: Database -> IO ()
 callPrintDB db@(trains,reservations) = do
             putStrLn ("-- Trains: --")
-            putStrLn (show trains)
+            putStrLn (callPrintTrains trains)
             putStrLn ("-- Reservations: --")
-            putStrLn (show reservations)
+            putStrLn (callPrintReservations reservations)
+
+callPrintTrains:: [Train] -> [Char]
+callPrintTrains []     = []
+callPrintTrains (s:xs) = "    " ++ (show s) ++ "\n" ++ (callPrintTrains xs)
+
+callPrintReservations:: [Reservation] -> [Char]
+callPrintReservations []     = []
+callPrintReservations (s:xs) = "    " ++ (show s) ++ "\n" ++ (callPrintReservations xs)
 
 -- ########################
 -- Selectors

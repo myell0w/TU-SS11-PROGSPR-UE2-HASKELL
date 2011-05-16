@@ -77,7 +77,12 @@ mainLoop db@(trains, reservations) = do
 	    4    -> callMakeSingleReservation db (tail command)
 	    5    -> callMakeGroupReservation db (tail command)
 	    _    -> db
+    checkDatabaseChange db newDB (argInt (command, 0))
     if (argInt (command, 0)) /= 0 then mainLoop newDB else saveDatabase newDB kFileName
+
+
+checkDatabaseChange :: Database -> Database -> Int -> IO()
+checkDatabaseChange dbOld dbNew command  =  if (command == 4 || command == 5) && dbOld /= dbNew then putStrLn "Reservation successful." else putStr ""
 
 -- Loads the database with path fileName and returns it
 -- if the file doesn't exists, return an empty database

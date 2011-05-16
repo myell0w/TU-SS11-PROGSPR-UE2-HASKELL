@@ -235,9 +235,7 @@ querySeatReservedForStations :: Database -> TrainName -> WaggonNumber -> SeatNum
 querySeatReservedForStations (_,[]) _ _ _ = []
  -- if there are reservations for the given seat in the given waggon then get a duplicate-free array of all stations
 querySeatReservedForStations db@(trains,reservations) trainName waggonNr seatNr = if res /= [] then nub (concat (map allStations res)) else []
-      where train = [t | t <- trains, name(t) == trainName]!!0            -- get train with given Name
-            waggon = [w | w <- waggons(train), fst(w) == waggonNr]!!0     -- get waggon of train with given Number
-            res = [r | r <- reservations, seatNumber(r) == seatNr, waggonNumber(r) == waggonNr] -- get all reservations for this seat in this waggon
+      where res = [r | r <- reservations, seatNumber(r) == seatNr, waggonNumber(r) == waggonNr, trainForReservation r == trainName] -- get all reservations for this seat in this waggon
 
 -- queries the pair (size of group reservation, array of stations) for all group reservations of a given waggon
 -- we don't remove duplicates by design to not loose the information of the stations associated to the group size
@@ -245,9 +243,7 @@ querySeatReservedForStations db@(trains,reservations) trainName waggonNr seatNr 
 queryGroupreservationForStations :: Database -> TrainName -> WaggonNumber -> [(Int, [Station])]
 queryGroupreservationForStations (_,[]) _ _ = []
 queryGroupreservationForStations db@(trains,reservations) trainName waggonNr = (map groupSizeAndStations res)
-     where train = [t | t <- trains, name(t) == trainName]!!0            -- get train with given Name
-           waggon = [w | w <- waggons(train), fst(w) == waggonNr]!!0     -- get waggon of train with given Number
-           res = [r | r <- reservations, groupSize(r) > 0, waggonNumber(r) == waggonNr] -- all group reservations for waggon
+     where res = [r | r <- reservations, groupSize(r) > 0, waggonNumber(r) == waggonNr, trainForReservation r == trainName] -- all group reservations for waggon
 
 -- ########################
 -- Reservation-Queries
